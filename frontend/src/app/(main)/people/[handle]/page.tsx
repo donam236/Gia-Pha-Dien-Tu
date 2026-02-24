@@ -18,6 +18,8 @@ import { zodiacYear } from '@/lib/genealogy-types';
 import type { PersonDetail } from '@/lib/genealogy-types';
 import { CommentSection } from '@/components/comment-section';
 import { fetchPersonByHandle } from '@/lib/supabase-data';
+import { ContributeDialog } from '@/components/contribute-dialog';
+import { Edit3 } from 'lucide-react';
 
 export default function PersonProfilePage() {
     const params = useParams();
@@ -25,6 +27,7 @@ export default function PersonProfilePage() {
     const handle = params.handle as string;
     const [person, setPerson] = useState<PersonDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isContributeOpen, setIsContributeOpen] = useState(false);
 
     useEffect(() => {
         const loadPerson = async () => {
@@ -83,6 +86,12 @@ export default function PersonProfilePage() {
 
     return (
         <div className="relative min-h-[calc(100vh-120px)]">
+            <ContributeDialog
+                person={person}
+                isOpen={isContributeOpen}
+                onClose={() => setIsContributeOpen(false)}
+            />
+
             {/* Ambient Background Elements - Create Depth */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none -m-8 lg:-m-12">
                 <div className={`absolute top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-20 animate-pulse-slow ${isMale ? 'bg-blue-500/30' : 'bg-pink-500/30'}`} />
@@ -103,6 +112,14 @@ export default function PersonProfilePage() {
                     </Button>
 
                     <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            className="rounded-xl glass-card border-white/10 hover:border-primary/50 transition-colors gap-2 px-4"
+                            onClick={() => setIsContributeOpen(true)}
+                        >
+                            <Edit3 className="h-4 w-4 text-primary-500" />
+                            <span className="text-xs font-bold">Đề xuất sửa</span>
+                        </Button>
                         <Button variant="outline" size="icon" className="rounded-xl glass-card border-white/10 hover:border-primary/50 transition-colors">
                             <Users className="h-4 w-4" />
                         </Button>

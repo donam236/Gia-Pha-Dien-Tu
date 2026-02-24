@@ -126,6 +126,12 @@ graph TD
 **Tasks:**
 
 - [x] **[UI]** Hero Section với hiệu ứng Typography 3D và nền mờ ảo (Glass Elements).
+- *Là một thành viên mới, tôi muốn thấy sự hoành tráng của dòng họ ngay tại trang chủ.*
+- *Là một người dùng, tôi muốn giao diện nhất quán giữa trang chủ, cây và hồ sơ thành viên.*
+
+**Tasks:**
+
+- [x] **[UI]** Hero Section với hiệu ứng Typography 3D và nền mờ ảo (Glass Elements).
 - [x] **[Content]** Hiển thị số liệu thống kê dòng họ (Tổng số đời, Tổng thành viên) dạng Counter đẹp mắt.
 - [x] **[Theming]** Đồng bộ Color Palette (Vibrant Green/Gold) trên toàn bộ hệ thống.
 - [x] **[Feature]** Nâng cấp Electronic Book: Giao diện lật trang (Flipbook) và Theme màu Premium.
@@ -143,10 +149,10 @@ graph TD
 
 **Tasks:**
 
-- [ ] **[Frontend]** Xây dựng `ContributeDialog` đa năng (Sửa info, Thêm con, Thêm vợ/chồng).
-- [ ] **[Backend]** API xử lý upload ảnh minh chứng lên Supabase Storage.
-- [ ] **[Admin]** Xây dựng màn hình `Approval Queue` với so sánh Side-by-Side (Cũ vs Mới).
-- [ ] **[Notify]** Hệ thống thông báo trạng thái qua Email/Web Notification cho người gửi.
+- [x] Thiết kế Database cho các yêu cầu đóng góp (`contributions`)
+- [x] Biểu mẫu "Đề xuất chỉnh sửa" (ContributeDialog) tại Profile
+- [x] Giao diện Admin duyệt đóng góp (Side-by-side comparison)
+- [ ] Hệ thống thông báo trạng thái đóng góp cho người dùng
 
 ---
 
@@ -181,4 +187,4 @@ graph TD
 ---
 > **Người lập kế hoạch**: Antigravity AI Architect  
 > **Phiên bản**: 2.0 (PRD Aligned)  
-> **Ngày cập nhật**: 24/02/2026
+> **Lần cuối cập nhật**: 24/02/2026
