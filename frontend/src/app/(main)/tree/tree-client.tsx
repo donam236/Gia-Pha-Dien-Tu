@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { ContributeDialog } from '@/components/contribute-dialog';
-import { Search, ZoomIn, ZoomOut, Maximize2, TreePine, Eye, Users, GitBranch, User, ArrowDownToLine, ArrowUpFromLine, Crosshair, X, ChevronDown, ChevronRight, BarChart3, Package, Link, ChevronsDownUp, ChevronsUpDown, Copy, Pencil, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, GripVertical, MessageSquarePlus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, ZoomIn, ZoomOut, Maximize2, Eye, Users, GitBranch, User, ArrowDownToLine, ArrowUpFromLine, Crosshair, X, ChevronDown, ChevronRight, BarChart3, Package, Link, ChevronsDownUp, ChevronsUpDown, Copy, Pencil, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, GripVertical, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 import {
     fetchTreeData,
@@ -20,7 +22,7 @@ import {
 import {
     computeLayout, filterAncestors, filterDescendants,
     CARD_W, CARD_H,
-    type TreeNode, type TreeFamily, type LayoutResult, type PositionedNode, type PositionedCouple, type Connection,
+    type TreeNode, type TreeFamily, type LayoutResult, type PositionedNode, type PositionedCouple,
 } from '@/lib/tree-layout';
 import { getMockTreeData } from '@/lib/mock-data';
 
@@ -167,9 +169,22 @@ function computePersonGenerations(people: TreeNode[], families: TreeFamily[]): M
 export default function TreeViewPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const containerRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
+    useEffect(() => {
+        const updateSize = () => {
+            if (viewportRef.current) {
+                setViewportSize({
+                    width: viewportRef.current.clientWidth,
+                    height: viewportRef.current.clientHeight
+                });
+            }
+        };
+        updateSize();
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
     const [treeData, setTreeData] = useState<{ people: TreeNode[]; families: TreeFamily[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<ViewMode>('full');
@@ -200,10 +215,10 @@ export default function TreeViewPage() {
         const viewParam = searchParams.get('view') as ViewMode | null;
         const personParam = searchParams.get('person');
         if (viewParam && ['full', 'ancestor', 'descendant'].includes(viewParam)) {
-            setViewMode(viewParam);
+            if (viewMode !== viewParam) setViewMode(viewParam);
         }
         if (personParam && treeData.people.some(p => p.handle === personParam)) {
-            setFocusPerson(personParam);
+            if (focusPerson !== personParam) setFocusPerson(personParam);
         }
         // Auto-collapse on initial load
         if (!viewParam || viewParam === 'full') {
@@ -249,7 +264,7 @@ export default function TreeViewPage() {
             }
             setCollapsedBranches(toCollapse);
         }
-    }, [searchParams, treeData]);
+    }, [searchParams, treeData, focusPerson, viewMode]);
 
     // Sync URL when view/focus changes
     useEffect(() => {
@@ -489,7 +504,10 @@ export default function TreeViewPage() {
     const layout = useMemo<LayoutResult | null>(() => {
         if (!displayData) return null;
         const d = 'filteredPeople' in displayData
-            ? { people: (displayData as any).filteredPeople, families: (displayData as any).filteredFamilies }
+            ? {
+                people: (displayData as unknown as { filteredPeople: TreeNode[] }).filteredPeople,
+                families: (displayData as unknown as { filteredFamilies: TreeFamily[] }).filteredFamilies
+            }
             : displayData;
         // F4: Filter out hidden handles
         const visiblePeople = d.people.filter((p: TreeNode) => !hiddenHandles.has(p.handle));
@@ -531,9 +549,9 @@ export default function TreeViewPage() {
     const CULL_PAD = 300; // px padding around viewport
 
     const visibleNodes = useMemo(() => {
-        if (!layout || !viewportRef.current) return layout?.nodes ?? [];
-        const vw = viewportRef.current.clientWidth;
-        const vh = viewportRef.current.clientHeight;
+        if (!layout || viewportSize.width === 0) return layout?.nodes ?? [];
+        const vw = viewportSize.width;
+        const vh = viewportSize.height;
         const { x: tx, y: ty, scale } = transform;
         // Convert viewport rect to tree-space coordinates
         const left = (-tx / scale) - CULL_PAD;
@@ -544,35 +562,33 @@ export default function TreeViewPage() {
             n.x + CARD_W >= left && n.x <= right &&
             n.y + CARD_H >= top && n.y <= bottom
         );
-    }, [layout, transform]);
+    }, [layout, transform, viewportSize]);
 
     const visibleHandles = useMemo(() => new Set(visibleNodes.map(n => n.node.handle)), [visibleNodes]);
 
     // Batched SVG paths for connections
     const { parentPaths, couplePaths, visibleCouples } = useMemo(() => {
-        if (!layout) return { parentPaths: '', couplePaths: '', visibleCouples: [] as PositionedCouple[] };
+        if (!layout || viewportSize.width === 0) return { parentPaths: '', couplePaths: '', visibleCouples: [] as PositionedCouple[] };
         let pp = '';
         let cp = '';
         const vc: PositionedCouple[] = [];
         // Only render connections where at least one endpoint is visible
+        const vw = viewportSize.width;
+        const vh = viewportSize.height;
+        const { x: tx, y: ty, scale } = transform;
+        const left = (-tx / scale) - CULL_PAD;
+        const top = (-ty / scale) - CULL_PAD;
+        const right = ((vw - tx) / scale) + CULL_PAD;
+        const bottom = ((vh - ty) / scale) + CULL_PAD;
+        const inView = (x: number, y: number) =>
+            x >= left && x <= right && y >= top && y <= bottom;
+
         for (const c of layout.connections) {
-            // Check if any endpoint is near visible area
-            const vw = viewportRef.current?.clientWidth ?? 1200;
-            const vh = viewportRef.current?.clientHeight ?? 900;
-            const { x: tx, y: ty, scale } = transform;
-            const left = (-tx / scale) - CULL_PAD;
-            const top = (-ty / scale) - CULL_PAD;
-            const right = ((vw - tx) / scale) + CULL_PAD;
-            const bottom = ((vh - ty) / scale) + CULL_PAD;
-            const inView = (x: number, y: number) =>
-                x >= left && x <= right && y >= top && y <= bottom;
             if (!inView(c.fromX, c.fromY) && !inView(c.toX, c.toY)) continue;
 
             if (c.type === 'couple') {
                 cp += `M${c.fromX},${c.fromY}L${c.toX},${c.toY}`;
             } else {
-                // Each connection segment is already a single straight line
-                // (either horizontal or vertical) from the layout engine
                 pp += `M${c.fromX},${c.fromY}L${c.toX},${c.toY}`;
             }
         }
@@ -583,7 +599,7 @@ export default function TreeViewPage() {
             }
         }
         return { parentPaths: pp, couplePaths: cp, visibleCouples: vc };
-    }, [layout, transform, visibleHandles]);
+    }, [layout, transform, visibleHandles, viewportSize]);
 
     // Stable callbacks for PersonCard
     const handleCardHover = useCallback((h: string | null) => setHoveredHandle(h), []);
@@ -600,10 +616,14 @@ export default function TreeViewPage() {
 
     // Search highlight
     useEffect(() => {
-        if (!searchQuery || !treeData) { setHighlightHandles(new Set()); return; }
+        if (!searchQuery || !treeData) {
+            if (highlightHandles.size > 0) setHighlightHandles(new Set());
+            return;
+        }
         const q = searchQuery.toLowerCase();
-        setHighlightHandles(new Set(treeData.people.filter(p => p.displayName.toLowerCase().includes(q)).map(p => p.handle)));
-    }, [searchQuery, treeData]);
+        const matches = new Set(treeData.people.filter(p => p.displayName.toLowerCase().includes(q)).map(p => p.handle));
+        setHighlightHandles(matches);
+    }, [searchQuery, treeData, highlightHandles.size]);
 
     // Fit all
     const fitAll = useCallback(() => {
@@ -666,7 +686,6 @@ export default function TreeViewPage() {
         if (!el) return;
 
         let touching = false;
-        let lastTouches: Touch[] = [];
 
         const onTouchStart = (e: TouchEvent) => {
             if (e.touches.length === 1) {
@@ -677,7 +696,6 @@ export default function TreeViewPage() {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 pinchRef.current = { initialDist: dist, initialScale: transform.scale };
             }
-            lastTouches = Array.from(e.touches);
         };
 
         const onTouchMove = (e: TouchEvent) => {
@@ -703,7 +721,6 @@ export default function TreeViewPage() {
                     return { scale: newScale, x: mx - (mx - prev.x) * r, y: my - (my - prev.y) * r };
                 });
             }
-            lastTouches = Array.from(e.touches);
         };
 
         const onTouchEnd = () => { touching = false; };
@@ -767,103 +784,136 @@ export default function TreeViewPage() {
     // connPath kept for compatibility but unused with batched rendering
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)]">
+        <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between flex-wrap gap-2 px-1 pb-2">
-                <div>
-                    <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-                        <TreePine className="h-5 w-5" /> Cây gia phả
-                    </h1>
-                    <p className="text-muted-foreground text-xs">
-                        {layout ? `${layout.nodes.length} thành viên` : 'Đang tải...'}
-                        {viewMode !== 'full' && focusPerson && (
-                            <span className="ml-1 text-blue-500">
-                                • {viewMode === 'ancestor' ? 'Tổ tiên' : 'Hậu duệ'} của{' '}
-                                {treeData?.people.find(p => p.handle === focusPerson)?.displayName}
+            <div className="flex-none p-4 pb-2">
+                <p className="text-surface-500 dark:text-surface-400 text-xs font-medium uppercase tracking-wider">
+                    {layout ? `${layout.nodes.length} thành viên` : 'Đang tải...'}
+                    {viewMode !== 'full' && focusPerson && (
+                        <span className="ml-2 text-primary-500 font-bold">
+                            {viewMode === 'ancestor' ? 'TỔ TIÊN' : 'HẬU DUỆ'} CỦA{' '}
+                            <span className="underline decoration-primary-500/30 underline-offset-4 tracking-normal">
+                                {treeData?.people.find(p => p.handle === focusPerson)?.displayName.toUpperCase()}
                             </span>
-                        )}
-                    </p>
+                        </span>
+                    )}
+                </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+                {/* View modes */}
+                <div className="flex glass-card border-white/10 dark:border-white/5 p-1 rounded-2xl shadow-xl">
+                    {([['full', 'Toàn cảnh', Eye], ['ancestor', 'Tổ tiên', Users], ['descendant', 'Hậu duệ', GitBranch]] as const).map(([mode, label, Icon]) => (
+                        <button key={mode} onClick={() => changeViewMode(mode)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-tight flex items-center gap-2 transition-all ${viewMode === mode ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-[1.02]' : 'text-surface-500 hover:text-surface-900 border border-transparent hover:border-white/20 hover:bg-white/5'}`}>
+                            <Icon className="h-3.5 w-3.5" /> {label}
+                        </button>
+                    ))}
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* View modes */}
-                    <div className="flex rounded-lg border overflow-hidden text-xs">
-                        {([['full', 'Toàn cảnh', Eye], ['ancestor', 'Tổ tiên', Users], ['descendant', 'Hậu duệ', GitBranch]] as const).map(([mode, label, Icon]) => (
-                            <button key={mode} onClick={() => changeViewMode(mode)}
-                                className={`px-2.5 py-1.5 font-medium flex items-center gap-1 transition-colors ${mode !== 'full' ? 'border-l' : ''} ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
-                                <Icon className="h-3.5 w-3.5" /> {label}
-                            </button>
-                        ))}
+                {/* Search */}
+                <div className="relative">
+                    <div className="relative w-56 group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400 group-focus-within:text-primary-500 transition-colors" />
+                        <Input placeholder="Tìm nhanh..." value={searchQuery}
+                            onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
+                            onFocus={() => setShowSearch(true)}
+                            className="pl-10 h-10 text-sm glass border-white/10 dark:border-white/5 rounded-2xl focus:ring-2 focus:ring-primary-500/50 shadow-inner" />
                     </div>
-                    {/* Search */}
-                    <div className="relative">
-                        <div className="relative w-44">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <Input placeholder="Tìm kiếm..." value={searchQuery}
-                                onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
-                                onFocus={() => setShowSearch(true)} className="pl-8 h-8 text-xs" />
-                        </div>
+                    <AnimatePresence>
                         {showSearch && searchResults.length > 0 && (
-                            <Card className="absolute z-50 w-56 right-0 top-10 shadow-lg">
-                                <CardContent className="p-1 max-h-52 overflow-y-auto">
-                                    {searchResults.map(p => (
-                                        <button key={p.handle} onClick={() => {
-                                            setFocusPerson(p.handle);
-                                            setViewMode('descendant');
-                                            autoCollapseForDescendant(p.handle);
-                                            setShowSearch(false);
-                                            setSearchQuery('');
-                                        }}
-                                            className="w-full text-left px-2.5 py-1.5 rounded text-xs hover:bg-accent transition-colors flex justify-between">
-                                            <span className="font-medium">{p.displayName}</span>
-                                            <span className="text-muted-foreground">{'generation' in p ? `Đời ${(p as any).generation}` : ''}{p.isPrivacyFiltered ? ' 🔒' : ''}</span>
-                                        </button>
-                                    ))}
-                                </CardContent>
-                            </Card>
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute z-50 w-64 right-0 top-12"
+                            >
+                                <Card className="glass-card rounded-2.5xl border-white/20 dark:border-white/10 shadow-2xl overflow-hidden">
+                                    <CardContent className="p-2 max-h-64 overflow-y-auto">
+                                        {searchResults.map(p => (
+                                            <button key={p.handle} onClick={() => {
+                                                setFocusPerson(p.handle);
+                                                setViewMode('descendant');
+                                                autoCollapseForDescendant(p.handle);
+                                                setShowSearch(false);
+                                                setSearchQuery('');
+                                            }}
+                                                className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium hover:bg-primary-500/10 hover:text-primary-600 transition-all flex items-center justify-between group">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-surface-900">{p.displayName}</span>
+                                                    <span className="text-[10px] text-surface-400">{'generation' in p ? `Đời thứ ${p.generation}` : ''}</span>
+                                                </div>
+                                                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                            </button>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
                         )}
-                    </div>
-                    {/* Controls */}
-                    <div className="flex gap-0.5">
-                        <Button variant="outline" size="icon" className="h-8 w-8" title="Thu gọn tất cả" onClick={collapseAll}><ChevronsDownUp className="h-3.5 w-3.5" /></Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8" title="Mở rộng tất cả" onClick={expandAll}><ChevronsUpDown className="h-3.5 w-3.5" /></Button>
-                        <div className="w-px bg-border mx-0.5" />
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setTransform(t => {
-                            const vw = viewportRef.current?.clientWidth ?? 0; const vh = viewportRef.current?.clientHeight ?? 0;
-                            const cx = vw / 2; const cy = vh / 2;
-                            const ns = Math.min(t.scale * 1.3, 3); const r = ns / t.scale;
-                            return { scale: ns, x: cx - (cx - t.x) * r, y: cy - (cy - t.y) * r };
-                        })}><ZoomIn className="h-3.5 w-3.5" /></Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setTransform(t => {
-                            const vw = viewportRef.current?.clientWidth ?? 0; const vh = viewportRef.current?.clientHeight ?? 0;
-                            const cx = vw / 2; const cy = vh / 2;
-                            const ns = Math.max(t.scale / 1.3, 0.15); const r = ns / t.scale;
-                            return { scale: ns, x: cx - (cx - t.x) * r, y: cy - (cy - t.y) * r };
-                        })}><ZoomOut className="h-3.5 w-3.5" /></Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={fitAll}><Maximize2 className="h-3.5 w-3.5" /></Button>
-                        <div className="w-px bg-border mx-0.5" />
-                        {isAdmin && (
+                    </AnimatePresence>
+                </div>
+                {/* Controls */}
+                <div className="flex glass-card border-white/10 dark:border-white/5 p-1 rounded-2xl shadow-xl">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10" title="Thu gọn" onClick={collapseAll}><ChevronsDownUp className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10" title="Mở rộng" onClick={expandAll}><ChevronsUpDown className="h-3.5 w-3.5" /></Button>
+                    <div className="w-px bg-white/10 mx-1" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10" onClick={() => setTransform(t => {
+                        const vw = viewportRef.current?.clientWidth ?? 0; const vh = viewportRef.current?.clientHeight ?? 0;
+                        const cx = vw / 2; const cy = vh / 2;
+                        const ns = Math.min(t.scale * 1.3, 3); const r = ns / t.scale;
+                        return { scale: ns, x: cx - (cx - t.x) * r, y: cy - (cy - t.y) * r };
+                    })}><ZoomIn className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10" onClick={() => setTransform(t => {
+                        const vw = viewportRef.current?.clientWidth ?? 0; const vh = viewportRef.current?.clientHeight ?? 0;
+                        const cx = vw / 2; const cy = vh / 2;
+                        const ns = Math.max(t.scale / 1.3, 0.15); const r = ns / t.scale;
+                        return { scale: ns, x: cx - (cx - t.x) * r, y: cy - (cy - t.y) * r };
+                    })}><ZoomOut className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10" onClick={fitAll}><Maximize2 className="h-3.5 w-3.5" /></Button>
+                    {isAdmin && (
+                        <>
+                            <div className="w-px bg-white/10 mx-1" />
                             <Button
-                                variant={editorMode ? 'default' : 'outline'}
+                                variant="ghost"
                                 size="icon"
-                                className={`h-8 w-8 ${editorMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                                className={`h-8 w-8 rounded-xl transition-all ${editorMode ? 'bg-primary-500 text-white shadow-lg' : 'hover:bg-white/10 text-primary-500'}`}
                                 title={editorMode ? 'Tắt chỉnh sửa' : 'Chế độ chỉnh sửa'}
                                 onClick={() => { setEditorMode(m => !m); setSelectedCard(null); }}
                             >
                                 <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Tree viewport + Editor panel row */}
-            <div className="flex-1 flex gap-0 min-h-0">
+            <div className="flex-1 flex gap-0 min-h-0 relative">
                 <div ref={viewportRef}
-                    className="flex-1 relative overflow-hidden rounded-xl border-2 bg-gradient-to-br from-background to-muted/30 cursor-grab active:cursor-grabbing select-none"
+                    className="flex-1 relative overflow-hidden rounded-[2.5rem] bg-slate-50 dark:bg-slate-950 glow-mesh cursor-grab active:cursor-grabbing select-none border border-white/10 shadow-2xl"
                     onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
                     onClick={() => { setShowSearch(false); setContextMenu(null); if (editorMode) setSelectedCard(null); }}
                 >
+                    {/* Ambient Background Orbs */}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        <motion.div
+                            animate={{
+                                x: [0, 100, 0],
+                                y: [0, 50, 0],
+                                scale: [1, 1.2, 1],
+                            }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-primary-500/10 blur-[120px] dark:bg-primary-500/5"
+                        />
+                        <motion.div
+                            animate={{
+                                x: [0, -100, 0],
+                                y: [0, -50, 0],
+                                scale: [1, 1.5, 1],
+                            }}
+                            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                            className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-accent-500/10 blur-[100px] dark:bg-accent-500/5"
+                        />
+                    </div>
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -877,13 +927,32 @@ export default function TreeViewPage() {
                             {/* SVG connections — batched into 2 paths */}
                             <svg className="absolute inset-0 pointer-events-none" width={layout.width} height={layout.height}
                                 style={{ overflow: 'visible' }}>
-                                {parentPaths && <path d={parentPaths} stroke="#94a3b8" strokeWidth={1.5} fill="none" />}
-                                {couplePaths && <path d={couplePaths} stroke="#cbd5e1" strokeWidth={1.5} fill="none" strokeDasharray="4,3" />}
+                                {parentPaths && (
+                                    <path d={parentPaths}
+                                        stroke="rgba(34, 197, 94, 0.3)"
+                                        strokeWidth={1.5}
+                                        fill="none"
+                                        className="transition-colors duration-500"
+                                    />
+                                )}
+                                {couplePaths && (
+                                    <path d={couplePaths}
+                                        stroke="rgba(234, 179, 8, 0.4)"
+                                        strokeWidth={1.5}
+                                        fill="none"
+                                        strokeDasharray="5,4"
+                                        className="transition-colors duration-500"
+                                    />
+                                )}
                                 {/* Couple hearts — only visible */}
                                 {visibleCouples.map(c => (
-                                    <text key={c.familyHandle}
+                                    <motion.text key={c.familyHandle}
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
                                         x={c.midX} y={c.y + CARD_H / 2 + 4}
-                                        textAnchor="middle" fontSize="10" fill="#e11d48">❤</text>
+                                        textAnchor="middle" fontSize="12" fill="#ef4444"
+                                        className="drop-shadow-sm select-none"
+                                    >❤️</motion.text>
                                 ))}
                             </svg>
 
@@ -920,8 +989,8 @@ export default function TreeViewPage() {
                             })}
 
                             {/* Context menu on card */}
-                            {contextMenu && (() => {
-                                const person = treeData?.people.find(p => p.handle === contextMenu.handle);
+                            {contextMenu && treeData && (() => {
+                                const person = treeData.people.find(p => p.handle === contextMenu.handle);
                                 if (!person) return null;
                                 return (
                                     <CardContextMenu
@@ -957,24 +1026,43 @@ export default function TreeViewPage() {
                     )}
 
                     {/* Zoom + culling indicator */}
-                    <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur border rounded px-1.5 py-0.5 text-[10px] text-muted-foreground flex gap-1.5">
-                        <span>{Math.round(transform.scale * 100)}%</span>
-                        {layout && <span className="opacity-60">·</span>}
-                        {layout && <span>{visibleNodes.length}/{layout.nodes.length} nodes</span>}
+                    <div className="absolute bottom-6 left-6 glass-card border-white/20 dark:border-white/10 rounded-2xl px-3 py-1.5 text-[11px] font-bold text-surface-500 flex items-center gap-3 shadow-xl backdrop-blur-xl">
+                        <div className="flex items-center gap-1.5 text-primary-500">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{Math.round(transform.scale * 100)}%</span>
+                        </div>
+                        {layout && <div className="w-px h-3 bg-white/20" />}
+                        {layout && (
+                            <div className="flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5" />
+                                <span>{visibleNodes.length}/{layout.nodes.length} <span className="opacity-50 font-medium">hiện hữu</span></span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Focus person selector */}
-                    {viewMode !== 'full' && treeData && (
-                        <div className="absolute bottom-2 right-2 bg-background/90 backdrop-blur border rounded-lg px-2 py-1.5 flex items-center gap-1.5 text-xs">
-                            <span className="text-muted-foreground">Gốc:</span>
-                            <select value={focusPerson || ''} onChange={e => setFocusPerson(e.target.value)}
-                                className="border rounded px-1.5 py-0.5 text-xs bg-background max-w-[140px]">
-                                {treeData.people.map(p => (
-                                    <option key={p.handle} value={p.handle}>{p.displayName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                    <AnimatePresence>
+                        {viewMode !== 'full' && treeData && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                className="absolute bottom-6 right-6 glass-card border-white/20 dark:border-white/10 rounded-2xl px-4 py-2.5 flex items-center gap-3 shadow-2xl backdrop-blur-3xl z-40"
+                            >
+                                <span className="text-[11px] font-black uppercase text-surface-400 tracking-widest">Gốc phả</span>
+                                <select
+                                    value={focusPerson || ''}
+                                    onChange={e => setFocusPerson(e.target.value)}
+                                    className="bg-white/5 dark:bg-black/20 border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold text-surface-900 focus:outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none cursor-pointer pr-8 relative"
+                                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '12px' }}
+                                >
+                                    {treeData.people.map(p => (
+                                        <option key={p.handle} value={p.handle} className="bg-white dark:bg-slate-900">{p.displayName}</option>
+                                    ))}
+                                </select>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Link copied toast */}
                     {linkCopied && (
@@ -1053,6 +1141,7 @@ export default function TreeViewPage() {
                 <span className="flex items-center gap-1 opacity-60"><span className="w-2.5 h-2.5 rounded-sm bg-slate-200 border border-slate-400" /> Đã mất</span>
                 <span className="ml-auto opacity-50">Cuộn để zoom • Kéo để di chuyển • Nhấn để xem</span>
             </div>
+
             {/* Contribute dialog */}
             {contributePerson && (
                 <ContributeDialog
@@ -1066,7 +1155,7 @@ export default function TreeViewPage() {
 }
 
 // === Card Context Menu ===
-function CardContextMenu({ person, x, y, onViewDetail, onShowDescendants, onShowAncestors, onSetFocus, onShowFull, onCopyLink, onContribute, onClose }: {
+function CardContextMenu({ person, x, y, onViewDetail, onShowDescendants, onShowAncestors, onSetFocus, onShowFull, onCopyLink, onContribute }: {
     person: TreeNode;
     x: number;
     y: number;
@@ -1085,35 +1174,32 @@ function CardContextMenu({ person, x, y, onViewDetail, onShowDescendants, onShow
             style={{ left: x + 8, top: y + 8 }}
             onClick={(e) => e.stopPropagation()}
         >
-            <div className="bg-white/95 backdrop-blur-lg border border-slate-200 rounded-xl shadow-xl
-                py-1.5 min-w-[200px] overflow-hidden">
+            <div className="glass-card border-white/20 dark:border-white/10 rounded-2xl shadow-2xl
+                py-2 min-w-[220px] overflow-hidden backdrop-blur-3xl">
                 {/* Header */}
-                <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black
                             ${person.isPatrilineal
-                                ? (person.gender === 1 ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700')
-                                : 'bg-slate-100 text-slate-500'}`}>
-                            {person.displayName.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                                ? (person.gender === 1 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-pink-500 text-white shadow-lg shadow-pink-500/30')
+                                : 'bg-surface-200 text-surface-600'}`}>
+                            {person.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="text-sm font-semibold text-slate-800 truncate max-w-[130px]">{person.displayName}</span>
+                        <span className="text-sm font-bold text-surface-900 truncate max-w-[130px] tracking-tight">{person.displayName}</span>
                     </div>
-                    <button onClick={onClose} className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                    </button>
                 </div>
 
                 {/* Actions */}
-                <div className="py-1">
-                    <MenuAction icon={<User className="w-4 h-4" />} label="Xem chi tiết" desc="Mở trang cá nhân" onClick={onViewDetail} />
-                    <MenuAction icon={<ArrowDownToLine className="w-4 h-4" />} label="Hậu duệ từ đây" desc="Hiển thị cây con cháu" onClick={onShowDescendants} />
-                    <MenuAction icon={<ArrowUpFromLine className="w-4 h-4" />} label="Tổ tiên" desc="Hiển thị dòng tổ tiên" onClick={onShowAncestors} />
-                    <MenuAction icon={<Crosshair className="w-4 h-4" />} label="Căn giữa" desc="Di chuyển tới vị trí" onClick={onSetFocus} />
-                    <div className="border-t border-slate-100 my-1" />
-                    <MenuAction icon={<Link className="w-4 h-4" />} label="Sao chép link hậu duệ" desc="Chia sẻ link cây con cháu" onClick={onCopyLink} />
-                    <MenuAction icon={<Eye className="w-4 h-4" />} label="Toàn cảnh" desc="Hiển thị toàn bộ cây" onClick={onShowFull} />
-                    <div className="border-t border-slate-100 my-1" />
-                    <MenuAction icon={<MessageSquarePlus className="w-4 h-4" />} label="Đóng góp thông tin" desc="Bổ sung thông tin về người này" onClick={onContribute} />
+                <div className="p-1.5 flex flex-col gap-0.5">
+                    <MenuAction icon={<User className="w-4 h-4" />} label="Hồ sơ cá nhân" desc="Thông tin chi tiết" onClick={onViewDetail} />
+                    <MenuAction icon={<ArrowDownToLine className="w-4 h-4" />} label="Xem hậu duệ" desc="Cây con cháu" onClick={onShowDescendants} />
+                    <MenuAction icon={<ArrowUpFromLine className="w-4 h-4" />} label="Xem tổ tiên" desc="Cây cội nguồn" onClick={onShowAncestors} />
+                    <MenuAction icon={<Crosshair className="w-4 h-4" />} label="Tâm điểm" desc="Căn giữa màn hình" onClick={onSetFocus} />
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <MenuAction icon={<Link className="w-4 h-4" />} label="Sao chép liên kết" desc="Link chia sẻ nhanh" onClick={onCopyLink} />
+                    <MenuAction icon={<Eye className="w-4 h-4" />} label="Toàn cảnh" desc="Hiện toàn bộ phả" onClick={onShowFull} />
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <MenuAction icon={<MessageSquarePlus className="w-4 h-4" />} label="Đóng góp tu chỉnh" desc="Gửi yêu cầu sửa đổi" onClick={onContribute} />
                 </div>
             </div>
         </div>
@@ -1123,14 +1209,14 @@ function CardContextMenu({ person, x, y, onViewDetail, onShowDescendants, onShow
 function MenuAction({ icon, label, desc, onClick }: { icon: React.ReactNode; label: string; desc: string; onClick: () => void }) {
     return (
         <button
-            className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-slate-50 active:bg-slate-100
-                transition-colors text-left group"
+            className="w-full px-4 py-2 flex items-center gap-3 hover:bg-white/10 active:bg-white/20
+                rounded-xl transition-all text-left group"
             onClick={onClick}
         >
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0">{icon}</span>
+            <span className="text-surface-400 group-hover:text-primary-500 transition-colors flex-shrink-0 scale-110 group-hover:scale-125 duration-300">{icon}</span>
             <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-slate-700 group-hover:text-slate-900">{label}</p>
-                <p className="text-[10px] text-slate-400">{desc}</p>
+                <p className="text-[13px] font-bold text-surface-700 group-hover:text-surface-950 transition-colors uppercase tracking-tight leading-none mb-0.5">{label}</p>
+                <p className="text-[10px] text-surface-400 group-hover:text-surface-600 transition-colors">{desc}</p>
             </div>
         </button>
     );
@@ -1169,25 +1255,34 @@ function PersonCard({ item, isHighlighted, isFocused, isHovered, isSelected, zoo
     const isPatri = node.isPatrilineal;
 
     // ── Color system ──
-    const dotColor = !isPatri ? '#94a3b8' : isMale ? '#818cf8' : isFemale ? '#f472b6' : '#94a3b8';
+    const dotColor = !isPatri ? '#94a3b8' : isMale ? '#10b981' : isFemale ? '#f472b6' : '#94a3b8';
 
     // F1: MINI zoom → just a colored dot with tooltip
     if (zoomLevel === 'mini') {
         return (
-            <div
+            <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="absolute group"
                 style={{ left: x + CARD_W / 2 - 6, top: y + CARD_H / 2 - 6, width: 12, height: 12 }}
                 onMouseEnter={() => onHover(node.handle)}
                 onMouseLeave={() => onHover(null)}
                 onClick={(e) => { e.stopPropagation(); onClick(node.handle, x + CARD_W, y + CARD_H / 2); }}
             >
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: dotColor }} />
-                {/* Tooltip on hover */}
-                <div className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 z-50
-                    bg-slate-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none">
-                    {node.displayName} · Đời {item.generation + 1}
-                </div>
-            </div>
+                <div className="w-3 h-3 rounded-full shadow-lg ring-2 ring-white/20" style={{ backgroundColor: dotColor }} />
+                <AnimatePresence>
+                    {isHovered && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="absolute -top-10 left-1/2 -translate-x-1/2 z-50
+                            bg-slate-900/90 backdrop-blur-md text-white text-[10px] px-2.5 py-1.5 rounded-xl shadow-2xl whitespace-nowrap pointer-events-none font-bold border border-white/10"
+                        >
+                            {node.displayName} <span className="opacity-50 mx-1">/</span> Đời {item.generation + 1}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
         );
     }
 
@@ -1198,129 +1293,111 @@ function PersonCard({ item, isHighlighted, isFocused, isHovered, isSelected, zoo
         : node.displayName.slice(0, 2).toUpperCase();
 
     const avatarBg = !isPatri
-        ? 'bg-stone-300 text-stone-600'
+        ? 'bg-stone-200 text-stone-600'
         : isMale
-            ? (isDead ? 'bg-indigo-300 text-indigo-800' : 'bg-indigo-400 text-white')
+            ? (isDead ? 'bg-primary-900/20 text-primary-500' : 'bg-primary-500 text-white shadow-lg shadow-primary-500/30')
             : isFemale
-                ? (isDead ? 'bg-rose-300 text-rose-800' : 'bg-rose-400 text-white')
-                : 'bg-slate-300 text-slate-600';
+                ? (isDead ? 'bg-pink-900/20 text-pink-500' : 'bg-pink-500 text-white shadow-lg shadow-pink-500/30')
+                : 'bg-surface-200 text-surface-600';
 
-    const bgClass = !isPatri
-        ? 'from-stone-50 to-stone-100 border-stone-300/80 border-dashed'
-        : isDead
-            ? (isMale
-                ? 'from-indigo-50/60 to-slate-50 border-indigo-300/60'
-                : 'from-rose-50/60 to-slate-50 border-rose-300/60')
-            : isMale
-                ? 'from-indigo-50 to-violet-50 border-indigo-300'
-                : isFemale
-                    ? 'from-rose-50 to-pink-50 border-rose-300'
-                    : 'from-slate-50 to-slate-100 border-slate-300';
+    const glassBg = isDead ? 'opacity-60 grayscale-[0.3]' : '';
 
-    const glowClass = isSelected ? 'ring-2 ring-blue-500 ring-offset-2 shadow-blue-200 shadow-lg'
-        : isHighlighted ? 'ring-2 ring-amber-400 ring-offset-2'
-            : isFocused ? 'ring-2 ring-indigo-400 ring-offset-2'
-                : isHovered ? 'ring-1 ring-indigo-200' : '';
+    const glowClass = isSelected ? 'ring-4 ring-primary-500 ring-offset-4 dark:ring-offset-slate-950 shadow-2xl shadow-primary-500/40 scale-[1.05]'
+        : isHighlighted ? 'ring-2 ring-accent-500 ring-offset-2 scale-[1.02]'
+            : isFocused ? 'ring-2 ring-primary-400 ring-offset-2'
+                : isHovered ? 'scale-[1.03] shadow-2xl' : '';
 
-    // F1: COMPACT zoom → smaller card with just name + gen
-    if (zoomLevel === 'compact') {
-        return (
-            <div
-                className={`absolute rounded-lg border bg-gradient-to-br shadow-sm transition-all duration-200
-                    cursor-pointer hover:shadow-md ${bgClass} ${glowClass}
-                    ${isDead ? 'opacity-70' : ''} ${!isPatri ? 'opacity-80' : ''}`}
-                style={{ left: x, top: y, width: CARD_W, height: CARD_H }}
-                onMouseEnter={() => onHover(node.handle)}
-                onMouseLeave={() => onHover(null)}
-                onClick={(e) => { e.stopPropagation(); onClick(node.handle, x + CARD_W, y + CARD_H / 2); }}
-            >
-                <div className="px-2 py-1.5 h-full flex items-center gap-2">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center
-                        font-bold text-[9px] shadow-sm ring-1 ring-black/5 ${avatarBg} flex-shrink-0`}>
-                        {initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[10px] leading-tight text-slate-800 truncate">{node.displayName}</p>
-                        <span className="text-[8px] font-semibold px-0.5 py-px rounded bg-amber-100 text-amber-700">Đời {item.generation + 1}</span>
-                    </div>
-                </div>
-                {/* Collapse toggle */}
-                {showCollapseToggle && (
-                    <button
-                        className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 w-5 h-5 rounded-full
-                            bg-white border border-slate-300 shadow-sm flex items-center justify-center
-                            hover:bg-slate-100 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onToggleCollapse(node.handle); }}
-                    >
-                        {isCollapsed ? <ChevronRight className="w-3 h-3 text-slate-500" /> : <ChevronDown className="w-3 h-3 text-slate-500" />}
-                    </button>
-                )}
-            </div>
-        );
-    }
-
-    // F1: FULL zoom → original detailed card
     return (
-        <div
-            className={`absolute rounded-xl border-[1.5px] bg-gradient-to-br shadow-sm transition-all duration-200
-                cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${bgClass} ${glowClass}
-                ${isDead ? 'opacity-70' : ''} ${!isPatri ? 'opacity-80' : ''}`}
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`absolute glass-card rounded-2.5xl border-white/10 dark:border-white/5 shadow-xl transition-all duration-500
+                cursor-pointer ${glassBg} ${glowClass}`}
             style={{ left: x, top: y, width: CARD_W, height: CARD_H }}
             onMouseEnter={() => onHover(node.handle)}
             onMouseLeave={() => onHover(null)}
             onClick={(e) => { e.stopPropagation(); onClick(node.handle, x + CARD_W, y + CARD_H / 2); }}
             onContextMenu={(e) => { e.preventDefault(); onSetFocus(node.handle); }}
         >
-            <div className="px-2.5 py-2 h-full flex items-center gap-2.5">
-                {/* Avatar */}
+            <div className={`absolute inset-0 rounded-2.5xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none ${isMale ? 'bg-primary-500/5' : 'bg-pink-500/5'}`} />
+
+            <div className="px-3 py-2.5 h-full flex items-center gap-3 relative z-10">
+                {/* Avatar area */}
                 <div className="relative flex-shrink-0">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center
-                        font-bold text-sm shadow-sm ring-1 ring-black/5 ${avatarBg} ${isDead ? 'opacity-60' : ''}`}>
+                    <motion.div
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center
+                            font-black text-base shadow-inner border border-white/10 ${avatarBg}`}
+                    >
                         {initials}
-                    </div>
+                    </motion.div>
                     {isPatri && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500
-                            text-white text-[8px] flex items-center justify-center shadow-sm font-bold ring-1 ring-white">Lê</span>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-md bg-gradient-to-br from-primary-400 to-primary-600
+                                text-white text-[8px] flex items-center justify-center shadow-lg font-black border-2 border-white dark:border-slate-900"
+                        >
+                            LÊ
+                        </motion.div>
                     )}
                 </div>
 
-                {/* Info */}
+                {/* Info area */}
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[11px] leading-tight text-slate-800 truncate">
-                        {node.displayName}
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-extrabold text-[12px] leading-tight text-surface-900 dark:text-surface-50 truncate tracking-tight">
+                            {node.displayName}
+                        </p>
+                    </div>
+
+                    <p className="text-[10px] font-bold text-surface-500 dark:text-surface-400 flex items-center gap-1">
+                        <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-black border-primary-500/30 text-primary-600 dark:text-primary-400 bg-primary-50/50 dark:bg-primary-900/20 rounded">
+                            ĐỜI {item.generation + 1}
+                        </Badge>
+                        {node.birthYear && (
+                            <span className="opacity-70 dark:opacity-90 tracking-tighter">
+                                {node.birthYear} — {node.deathYear || (node.isLiving ? 'NAY' : '???')}
+                            </span>
+                        )}
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
-                        {node.birthYear
-                            ? `${node.birthYear}${node.deathYear ? ` — ${node.deathYear}` : node.isLiving ? ' — nay' : ''}`
-                            : '—'}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-1">
-                        <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200/60">Đời {item.generation + 1}</span>
+
+                    <div className="mt-1 flex items-center gap-2">
                         {isDead ? (
-                            <span className="text-[9px] text-slate-400">✝ Đã mất</span>
+                            <span className="text-[8px] font-black text-surface-400 dark:text-surface-300 uppercase tracking-widest flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-surface-300 dark:bg-surface-500" /> Đã mất
+                            </span>
                         ) : (
-                            <span className="text-[9px] text-emerald-600 font-medium">● Còn sống</span>
+                            <span className="text-[8px] font-black text-primary-500 dark:text-primary-400 uppercase tracking-widest flex items-center gap-1">
+                                <motion.span
+                                    animate={{ opacity: [1, 0.4, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="w-1 h-1 rounded-full bg-primary-500 dark:bg-primary-400 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+                                /> Còn sống
+                            </span>
                         )}
                         {!isPatri && (
-                            <span className="text-[9px] text-slate-400 ml-0.5">· Ngoại tộc</span>
+                            <Badge variant="secondary" className="h-3.5 px-1 text-[7.5px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-none">NGOẠI TỘC</Badge>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* F4: Collapse toggle button */}
+            {/* Collapse toggle */}
             {showCollapseToggle && (
-                <button
-                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full
-                        bg-white border border-slate-300 shadow-sm flex items-center justify-center
-                        hover:bg-amber-50 hover:border-amber-400 transition-colors"
+                <motion.button
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={`absolute -bottom-4 left-1/2 -translate-x-1/2 z-20 w-8 h-8 rounded-xl
+                        glass border-white/20 shadow-2xl flex items-center justify-center
+                        transition-all ${isCollapsed ? 'bg-accent-500 text-white border-accent-400' : 'bg-white/80 dark:bg-slate-900/80 text-surface-600 hover:text-primary-500'}`}
                     onClick={(e) => { e.stopPropagation(); onToggleCollapse(node.handle); }}
                     title={isCollapsed ? 'Mở rộng nhánh' : 'Thu gọn nhánh'}
                 >
-                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-amber-600" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
-                </button>
+                    {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </motion.button>
             )}
-        </div>
+        </motion.div>
     );
 }
 
@@ -1336,49 +1413,61 @@ function BranchSummaryCard({ summary, parentNode, zoomLevel, onExpand }: {
 
     if (zoomLevel === 'mini') {
         return (
-            <div
+            <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="absolute group cursor-pointer"
                 style={{ left: x + CARD_W / 2 - 8, top: y + CARD_H / 2 - 8, width: 16, height: 16 }}
                 onClick={(e) => { e.stopPropagation(); onExpand(); }}
             >
-                <div className="w-4 h-4 rounded bg-amber-400 shadow-sm flex items-center justify-center">
-                    <span className="text-[7px] text-white font-bold">{summary.totalDescendants}</span>
+                <div className="w-4 h-4 rounded-lg bg-orange-500 shadow-lg shadow-orange-500/30 flex items-center justify-center ring-2 ring-white/20">
+                    <span className="text-[7px] text-white font-black">{summary.totalDescendants}</span>
                 </div>
-                <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-50
-                    bg-slate-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none">
-                    📦 {summary.totalDescendants} người · Đời {summary.generationRange[0]}→{summary.generationRange[1]}
-                </div>
-            </div>
+                <AnimatePresence>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileHover={{ opacity: 1, y: 0 }}
+                        className="hidden group-hover:block absolute -top-12 left-1/2 -translate-x-1/2 z-50
+                        bg-slate-900/90 backdrop-blur-md text-white text-[10px] px-3 py-2 rounded-xl shadow-2xl whitespace-nowrap pointer-events-none font-bold border border-white/10"
+                    >
+                        📦 {summary.totalDescendants} người <span className="opacity-40 mx-1">/</span> Đời {summary.generationRange[0]}→{summary.generationRange[1]}
+                    </motion.div>
+                </AnimatePresence>
+            </motion.div>
         );
     }
 
     return (
-        <div
-            className="absolute rounded-xl border-2 border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50
-                shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.02 }}
+            className="absolute rounded-2.5xl glass-card border-orange-500/30 bg-orange-500/5
+                shadow-xl cursor-pointer overflow-hidden"
             style={{ left: x, top: y, width: CARD_W, height: CARD_H }}
             onClick={(e) => { e.stopPropagation(); onExpand(); }}
         >
-            <div className="px-2.5 py-2 h-full flex items-center gap-2.5">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-orange-500
-                    flex items-center justify-center shadow-sm flex-shrink-0">
-                    <Package className="w-5 h-5 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent pointer-events-none" />
+            <div className="px-4 py-3 h-full flex items-center gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600
+                    flex items-center justify-center shadow-xl shadow-orange-500/20 flex-shrink-0 border border-white/20">
+                    <Package className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[11px] leading-tight text-amber-900">
-                        📦 {summary.totalDescendants} người
+                    <p className="font-black text-[13px] leading-tight text-orange-600 uppercase tracking-tight">
+                        📦 {summary.totalDescendants} Nhân khẩu
                     </p>
-                    <p className="text-[10px] text-amber-700 mt-0.5">
-                        Đời {summary.generationRange[0]} → {summary.generationRange[1]}
+                    <p className="text-[10px] font-bold text-surface-500 mt-1 uppercase tracking-widest opacity-70">
+                        Đời {summary.generationRange[0]} — {summary.generationRange[1]}
                     </p>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-[9px]">
-                        <span className="text-emerald-600 font-medium">● {summary.livingCount}</span>
-                        <span className="text-slate-400">✝ {summary.deceasedCount}</span>
-                        <span className="text-amber-600 ml-auto text-[8px] font-medium">▶ Mở</span>
+                    <div className="mt-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter">
+                        <span className="text-primary-600">● {summary.livingCount}</span>
+                        <span className="text-surface-400">✝ {summary.deceasedCount}</span>
+                        <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[8px] font-black bg-orange-100 dark:bg-orange-900/40 text-orange-600 border-none">MỞ RỘNG</Badge>
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -1408,9 +1497,9 @@ function GenerationHeaders({ generationStats, transform, cardH }: {
                             height: 20,
                         }}
                     >
-                        <div className="bg-slate-800/70 backdrop-blur text-white px-2 py-0.5 rounded-r-md
-                            font-medium whitespace-nowrap shadow-sm">
-                            Đ{gen} <span className="opacity-70">· {count}</span>
+                        <div className="bg-slate-900/90 dark:bg-slate-100/10 backdrop-blur-2xl text-white dark:text-white px-3 py-1.5 rounded-r-2xl
+                            font-black whitespace-nowrap shadow-2xl border border-white/20 border-l-0 tracking-tighter text-[11px] uppercase">
+                            Thế hệ {gen} <span className="opacity-50 mx-1">/</span> <span className="text-primary-400">{count}</span>
                         </div>
                     </div>
                 );
@@ -1424,80 +1513,83 @@ function StatsOverlay({ stats, onClose }: { stats: TreeStats; onClose: () => voi
     const maxCount = Math.max(...stats.perGeneration.map(g => g.count));
 
     return (
-        <div className="absolute top-3 right-3 w-64 bg-white/95 backdrop-blur-lg border border-slate-200
-            rounded-xl shadow-xl animate-in slide-in-from-right-5 fade-in duration-300 z-40 pointer-events-auto">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="absolute top-6 right-6 w-72 glass-card border-white/20 dark:border-white/10
+                rounded-[2rem] shadow-2xl z-40 pointer-events-auto overflow-hidden backdrop-blur-3xl"
+        >
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-                <div className="flex items-center gap-1.5">
-                    <BarChart3 className="w-4 h-4 text-indigo-500" />
-                    <span className="font-semibold text-sm text-slate-800">Tổng quan</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
+                <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-primary-500/10 rounded-xl text-primary-500">
+                        <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <span className="font-black text-xs uppercase tracking-widest text-surface-900">Thông lục</span>
                 </div>
-                <button onClick={onClose} className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
-                    <X className="w-3.5 h-3.5" />
+                <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-surface-400 hover:text-surface-600 transition-colors">
+                    <X className="w-4 h-4" />
                 </button>
             </div>
 
-            <div className="p-3 space-y-3">
+            <div className="p-5 space-y-6">
                 {/* Summary numbers */}
-                <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                        <p className="text-lg font-bold text-slate-800">{stats.total}</p>
-                        <p className="text-[9px] text-slate-500">Thành viên</p>
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold text-slate-800">{stats.totalGenerations}</p>
-                        <p className="text-[9px] text-slate-500">Thế hệ</p>
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold text-slate-800">{stats.totalFamilies}</p>
-                        <p className="text-[9px] text-slate-500">Gia đình</p>
-                    </div>
+                <div className="grid grid-cols-3 gap-3">
+                    {[
+                        { label: 'Nhân khẩu', val: stats.total, color: 'text-primary-500' },
+                        { label: 'Thế hệ', val: stats.totalGenerations, color: 'text-accent-500' },
+                        { label: 'Gia đình', val: stats.totalFamilies, color: 'text-blue-500' }
+                    ].map(item => (
+                        <div key={item.label} className="flex flex-col items-center">
+                            <span className={`text-xl font-black ${item.color} leading-none mb-1`}>{item.val}</span>
+                            <span className="text-[10px] font-bold text-surface-400 uppercase tracking-tighter">{item.label}</span>
+                        </div>
+                    ))}
                 </div>
 
                 {/* Generation distribution */}
-                <div>
-                    <p className="text-[10px] font-semibold text-slate-600 mb-1.5">Phân bố theo đời</p>
-                    <div className="space-y-1">
+                <div className="space-y-3">
+                    <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest text-center">Phân phổ truyền đời</p>
+                    <div className="space-y-2">
                         {stats.perGeneration.map(({ gen, count }) => (
-                            <div key={gen} className="flex items-center gap-1.5 text-[10px]">
-                                <span className="w-6 text-right text-slate-500 font-mono">Đ{gen}</span>
-                                <div className="flex-1 h-3 bg-slate-100 rounded-sm overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-indigo-400 to-violet-500 rounded-sm transition-all"
-                                        style={{ width: `${(count / maxCount) * 100}%` }}
+                            <div key={gen} className="flex items-center gap-3 text-[10px] group">
+                                <span className="w-8 text-right text-surface-500 font-black tracking-tighter uppercase whitespace-nowrap">Đời {gen}</span>
+                                <div className="flex-1 h-2.5 bg-white/5 dark:bg-black/20 rounded-full overflow-hidden border border-white/5">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${(count / maxCount) * 100}%` }}
+                                        transition={{ duration: 1, ease: "circOut" }}
+                                        className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.3)]"
                                     />
                                 </div>
-                                <span className="w-6 text-slate-600 font-medium">{count}</span>
+                                <span className="w-6 text-surface-900 font-black text-right">{count}</span>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* Status breakdown */}
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] pt-1 border-t border-slate-100">
-                    <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <span className="text-slate-600">Còn sống</span>
-                        <span className="ml-auto font-medium text-slate-800">{stats.livingCount}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-slate-300" />
-                        <span className="text-slate-600">Đã mất</span>
-                        <span className="ml-auto font-medium text-slate-800">{stats.deceasedCount}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                        <span className="text-slate-600">Chính tộc</span>
-                        <span className="ml-auto font-medium text-slate-800">{stats.patrilinealCount}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-stone-300" />
-                        <span className="text-slate-600">Ngoại tộc</span>
-                        <span className="ml-auto font-medium text-slate-800">{stats.nonPatrilinealCount}</span>
+                <div className="pt-4 border-t border-white/10">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        {[
+                            { label: 'Song đường', val: stats.livingCount, color: 'bg-primary-500' },
+                            { label: 'Quy tiên', val: stats.deceasedCount, color: 'bg-surface-300' },
+                            { label: 'Chính phối', val: stats.patrilinealCount, color: 'bg-blue-500' },
+                            { label: 'Ngoại tộc', val: stats.nonPatrilinealCount, color: 'bg-stone-400' }
+                        ].map(item => (
+                            <div key={item.label} className="flex items-center justify-between text-[10px] font-bold">
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                                    <span className="text-surface-500 uppercase tracking-tighter">{item.label}</span>
+                                </div>
+                                <span className="text-surface-900 font-black">{item.val}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -1522,25 +1614,25 @@ function EditorPanel({ selectedCard, treeData, onReorderChildren, onMoveChild, o
     const [showParentDropdown, setShowParentDropdown] = useState(false);
     const parentSearchRef = useRef<HTMLDivElement>(null);
 
-    if (!treeData) return null;
-
-    const person = selectedCard ? treeData.people.find(p => p.handle === selectedCard) : null;
+    const person = selectedCard && treeData ? treeData.people.find(p => p.handle === selectedCard) : null;
 
     // Sync local state when selection changes
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         if (person) {
-            setEditName(person.displayName || '');
-            setEditBirthYear(person.birthYear?.toString() || '');
-            setEditDeathYear(person.deathYear?.toString() || '');
-            setDirty(false);
-            setParentSearch('');
-            setShowParentDropdown(false);
+            const newName = person.displayName || '';
+            const newBirth = person.birthYear?.toString() || '';
+            const newDeath = person.deathYear?.toString() || '';
+
+            if (editName !== newName) setEditName(newName);
+            if (editBirthYear !== newBirth) setEditBirthYear(newBirth);
+            if (editDeathYear !== newDeath) setEditDeathYear(newDeath);
+            if (dirty) setDirty(false);
+            if (parentSearch) setParentSearch('');
+            if (showParentDropdown) setShowParentDropdown(false);
         }
-    }, [person?.handle]);
+    }, [person, editName, editBirthYear, editDeathYear, dirty, parentSearch, showParentDropdown]);
 
     // Close parent dropdown on outside click
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (parentSearchRef.current && !parentSearchRef.current.contains(e.target as Node)) {
@@ -1550,6 +1642,8 @@ function EditorPanel({ selectedCard, treeData, onReorderChildren, onMoveChild, o
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    if (!treeData) return null;
 
     // Find the family where this person is a parent
     const parentFamily = person
@@ -1575,7 +1669,7 @@ function EditorPanel({ selectedCard, treeData, onReorderChildren, onMoveChild, o
     const allParentFamilies = treeData.families.filter(f => f.fatherHandle || f.motherHandle);
     const parentFamiliesWithLabels = allParentFamilies.map(f => {
         const father = treeData.people.find(p => p.handle === f.fatherHandle);
-        const gen = father ? (father as any).generation : '';
+        const gen = father ? father.generation : '';
         const label = father ? father.displayName : f.handle;
         return { ...f, label, gen };
     });
@@ -1632,7 +1726,7 @@ function EditorPanel({ selectedCard, treeData, onReorderChildren, onMoveChild, o
                 <div className="flex-1 overflow-y-auto">
                     {/* Editable person info */}
                     <div className="p-3 border-b space-y-2">
-                        <p className="text-xs text-muted-foreground">Đời {(person as any).generation ?? '?'} · {person.handle}</p>
+                        <p className="text-xs text-muted-foreground">Đời {person.generation ?? '?'} · {person.handle}</p>
                         {parentPerson && (
                             <p className="text-xs text-muted-foreground">
                                 Cha: <span className="font-medium text-foreground">{parentPerson.displayName}</span>

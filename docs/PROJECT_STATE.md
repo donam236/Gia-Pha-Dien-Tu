@@ -8,10 +8,10 @@
 - [x] Core Genealogy Tree Logic
 - [x] Database Schema Integration
 - [x] Basic Member Profiles
-- [x] **Premium UI Implementation (Phase 1: Profiles Completed)**
+- [x] **Premium UI Implementation (Phase 1: Profiles & Tree Completed)**
   - [x] Member Profile Transformation
   - [x] Detailed Development Roadmap ([ROADMAP.md](file:///Volumes/DATA/NamDX/Project/02_Lab/Antigravity/External/Gia-Pha-Dien-Tu/docs/ROADMAP.md))
-  - [/] Tree View Visualization Overhaul (Ready to start)
+  - [x] Tree View Visualization Overhaul (Glassmorphism & Glow Effects)
 - [ ] Admin & Contribution Workflow
 
 ### 🛠 Tech Stack Update
@@ -25,11 +25,12 @@
 ### 📝 Latest Notes
 
 - **2026-02-23**: Successfully overhauled the Member Profile page. Created a comprehensive evaluation and roadmap in [ROADMAP.md](file:///Volumes/DATA/NamDX/Project/02_Lab/Antigravity/External/Gia-Pha-Dien-Tu/docs/ROADMAP.md).
+- **2026-02-24**: Completed Tree View Premium UI overhaul. Implemented glassmorphism, gender-glow, and dark mode optimizations. Resolved layout truncation issues for Vietnamese names.
 
 ### 🚀 Roadmap
 
 (See detailed [ROADMAP.md](file:///Volumes/DATA/NamDX/Project/02_Lab/Antigravity/External/Gia-Pha-Dien-Tu/docs/ROADMAP.md) for Phase 2-4)
 
-1. **Phase 1**: Premium Tree View overhaul (Glassmorphism nodes + Ambient BG).
+1. **Phase 2: landing Page**: Hero section & Grand architectural intro.
 2. Implement the "Contribution Request" workflow for public users.
 3. Polish the Mobile Responsive experience for the new profile pages.

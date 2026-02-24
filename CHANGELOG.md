@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-02-24]
+
+### Added
+
+- **Premium Tree View Overhaul**: Successfully implemented a high-end visualization system for the family tree.
+  - **Glassmorphism Nodes**: Person cards with `backdrop-blur`, semi-transparent backgrounds, and depth-based shadows.
+  - **Gender-Based Luminous Glow**:
+    - Male members: Blue ambient glow.
+    - Female members: Rose/Pink ambient glow.
+  - **Premium Stats Overlay**: A sleek, glass-styled indicator for tree statistics (zoom level, membership counts).
+  - **Advanced Selection Aura**: High-intensity luminous ring for selected/focused members.
+  - **Context Menu & Editor Upgrade**: Translucent glass-themed interfaces for tree interaction.
+- **Dark Mode Optimization**: Comprehensive color token audit to ensure perfect visibility and premium aesthetics in dark theme.
+
+### Changed
+
+- **Node Layout Optimization**:
+  - Increased base card width from 180px to 200px.
+  - Reduced font sizes and optimized padding to support full Vietnamese name display without truncation.
+- **Code Quality**:
+  - Eliminated complex cascading render warnings in `tree-client.tsx` using conditional state sync.
+  - Strict typing for search and layout computed properties.
+
 ## [2026-02-23]
 
 ### Added

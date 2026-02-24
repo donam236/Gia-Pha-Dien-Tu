@@ -175,7 +175,7 @@ graph TD
 | **P1-01** | UI | Glass Nodes for Tree View | High |
 | **P1-02** | UI | Ambient BG for Tree Page | High |
 | **P2-01** | UI | High-end Landing Page | Medium |
-| **P3-01** | Feature| Contribution Workflow | High |
+| **P3-01** | Feature | Contribution Workflow | High |
 | **P4-01** | Perf | Canvas Rendering Opt | Low |
 
 ---
