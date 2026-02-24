@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TreePine, Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -99,82 +100,150 @@ function RegisterContent() {
             }
 
             router.push('/');
-        } catch (err: unknown) {
+        } catch {
             setError('Đăng ký thất bại. Vui lòng thử lại.');
         } finally {
             setLoading(false);
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, x: -20 },
+        visible: { opacity: 1, x: 0 }
+    };
+
     return (
-        <Card className="border-0 shadow-2xl">
-            <CardHeader className="text-center space-y-2">
+        <Card className="bg-card/70 backdrop-blur-3xl border-white/20 shadow-2xl rounded-[3rem] overflow-hidden">
+            <CardHeader className="text-center space-y-4 pt-10 px-8">
                 <div className="flex justify-center">
-                    <div className="rounded-full bg-primary/10 p-3">
-                        <TreePine className="h-8 w-8 text-primary" />
-                    </div>
+                    <motion.div
+                        initial={{ scale: 0, rotate: -45 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", damping: 12, stiffness: 200 }}
+                        className="rounded-[1.5rem] bg-primary-500/10 p-5 border border-primary-500/20"
+                    >
+                        <TreePine className="h-10 w-10 text-primary-500" />
+                    </motion.div>
                 </div>
-                <CardTitle className="text-2xl font-bold">Tham gia Gia phả họ Lê</CardTitle>
-                <CardDescription>Đăng ký tham gia nền tảng gia phả dòng họ</CardDescription>
+                <div className="space-y-1">
+                    <CardTitle className="text-4xl font-black tracking-tighter italic text-nowrap">Gia Nhập Đỗ Quý</CardTitle>
+                    <CardDescription className="text-muted-foreground font-medium italic">
+                        Đăng ký tham gia nền tảng gia phả dòng họ Đỗ Quý
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    {!inviteCode && (
-                        <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-                            ⚠️ Bạn cần có mã mời từ Admin để đăng ký
-                        </div>
-                    )}
 
-                    {error && (
-                        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-                    )}
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium" htmlFor="displayName">Tên hiển thị</label>
-                        <Input id="displayName" placeholder="Nguyễn Văn A" {...register('displayName')} />
-                        {errors.displayName && <p className="text-xs text-destructive">{errors.displayName.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium" htmlFor="email">Email</label>
-                        <Input id="email" type="email" placeholder="email@example.com" {...register('email')} />
-                        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium" htmlFor="password">Mật khẩu</label>
-                        <div className="relative">
-                            <Input
-                                id="password"
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Tối thiểu 8 ký tự"
-                                {...register('password')}
-                            />
-                            <button
-                                type="button"
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                onClick={() => setShowPassword(!showPassword)}
+            <CardContent className="px-8 pb-10">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                    <AnimatePresence mode="wait">
+                        {!inviteCode && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="rounded-2xl bg-amber-500/10 p-4 border border-amber-500/20 text-xs font-bold text-amber-600 italic flex items-start gap-2"
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
+                                <span className="text-lg">⚠️</span>
+                                <span>Bạn cần có mã mời từ Người quản trị để có thể đăng ký tài khoản thành viên.</span>
+                            </motion.div>
+                        )}
+
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="rounded-2xl bg-rose-500/10 p-4 border border-rose-500/20 text-sm text-rose-600 font-bold italic"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <motion.div
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="space-y-4"
+                    >
+                        <motion.div variants={itemVariants} className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1" htmlFor="displayName">Tên hiển thị</label>
+                            <Input
+                                id="displayName"
+                                placeholder="Ví dụ: Đỗ Quý Nam"
+                                className="bg-background/50 border-white/5 rounded-2xl h-12 px-5 font-bold focus-visible:ring-primary-500/30"
+                                {...register('displayName')}
+                            />
+                            {errors.displayName && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.displayName.message}</p>}
+                        </motion.div>
+
+                        <motion.div variants={itemVariants} className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1" htmlFor="email">Email</label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="your@email.com"
+                                className="bg-background/50 border-white/5 rounded-2xl h-12 px-5 font-bold focus-visible:ring-primary-500/30"
+                                {...register('email')}
+                            />
+                            {errors.email && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.email.message}</p>}
+                        </motion.div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <motion.div variants={itemVariants} className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1" htmlFor="password">Mật khẩu</label>
+                                <div className="relative group">
+                                    <Input
+                                        id="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        className="bg-background/50 border-white/5 rounded-2xl h-12 px-5 font-bold focus-visible:ring-primary-500/30"
+                                        {...register('password')}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary-500"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                {errors.password && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.password.message}</p>}
+                            </motion.div>
+
+                            <motion.div variants={itemVariants} className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1" htmlFor="confirmPassword">Nhập lại</label>
+                                <Input
+                                    id="confirmPassword"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    className="bg-background/50 border-white/5 rounded-2xl h-12 px-5 font-bold focus-visible:ring-primary-500/30"
+                                    {...register('confirmPassword')}
+                                />
+                                {errors.confirmPassword && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.confirmPassword.message}</p>}
+                            </motion.div>
                         </div>
-                        {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                    </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium" htmlFor="confirmPassword">Xác nhận mật khẩu</label>
-                        <Input
-                            id="confirmPassword"
-                            type="password"
-                            placeholder="Nhập lại mật khẩu"
-                            {...register('confirmPassword')}
-                        />
-                        {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
-                    </div>
+                        <motion.div variants={itemVariants} className="pt-2">
+                            <Button type="submit" className="w-full bg-primary-500 hover:bg-primary-600 text-white rounded-2xl h-14 font-black shadow-xl shadow-primary-500/20 active:scale-95 transition-all" disabled={loading || !inviteCode}>
+                                {loading ? 'ĐANG XỬ LÝ...' : <span className="uppercase tracking-widest">Xác nhận đăng ký</span>}
+                            </Button>
+                        </motion.div>
 
-                    <Button type="submit" className="w-full" disabled={loading || !inviteCode}>
-                        {loading ? 'Đang đăng ký...' : 'Đăng ký'}
-                    </Button>
+                        <motion.div variants={itemVariants} className="text-center pt-2">
+                            <Button variant="link" className="text-xs font-bold text-muted-foreground hover:text-primary-500" onClick={() => router.push('/login')}>
+                                Đã có tài khoản? Đăng nhập ngay
+                            </Button>
+                        </motion.div>
+                    </motion.div>
                 </form>
             </CardContent>
         </Card>

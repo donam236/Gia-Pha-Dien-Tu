@@ -15,8 +15,18 @@ All notable changes to this project will be documented in this file.
   - **Advanced Selection Aura**: High-intensity luminous ring for selected/focused members.
   - **Context Menu & Editor Upgrade**: Translucent glass-themed interfaces for tree interaction.
 - **Dark Mode Optimization**: Comprehensive color token audit to ensure perfect visibility and premium aesthetics in dark theme.
-- **Premium Landing Page**: Implemented an immersive homepage with 3D typography, ambient orbs, and animated live-stats.
-- **3D Electronic Book (Flipbook)**: Integrated `react-pageflip` with high-fidelity 3D page animations, premium paper textures, and realistic spine shadows.
+- **Premium Auth Experience Overhaul**: Completely redesigned Login and Registration pages with a "High-End Elite" aesthetic.
+  - **Dynamic Auth Layout**: Implemented an animated ambient light system with shifting orbs and ultra-blurred glass containers.
+  - **Sequenced Entrance**: Smooth field-by-field entrance animations and immersive focus effects.
+  - **Invite-Only Registration UI**: Enhanced warning states for invite codes with amber glass styling.
+- **Premium Notifications Center**: Integrated a new glassmorphism-based notification system.
+  - **Categorized Inbox**: Color-coded action items (Events, Posts, Systems) with specialized icons.
+  - **Rich Mock Data**: Diverse scenarios ranging from family invitations to system highlights.
+  - **Micro-Interactions**: Hover-reveal actions and pulsing unread indicators.
+- **Media Library (Tư liệu) Upgrade**: Comprehensive overhaul of the digital archive interface.
+  - **Rich Grid/List Views**: Flexible layout switching for browsing images, videos, and documents.
+  - **Premium Media Assets**: Enriched with historical sắc phong, ceremony videos, and genealogy PDFs as mock data.
+  - **Advanced Categorization**: Filter by category (History, Ceremonies, Meetings) with tailored UI highlights.
 
 ### Changed
 
