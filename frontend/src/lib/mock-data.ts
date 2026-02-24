@@ -6,7 +6,32 @@ import type { TreeNode, TreeFamily } from './tree-layout';
 
 export const MOCK_PEOPLE: TreeNode[] = [
     // Đời 1
-    { handle: 'P001', displayName: 'Nguyễn Văn An', gender: 1, generation: 1, birthYear: 1920, deathYear: 1995, isLiving: false, isPrivacyFiltered: false, isPatrilineal: true, families: ['F001'], parentFamilies: [] },
+    {
+        handle: 'P001',
+        displayName: 'Nguyễn Văn An',
+        surname: 'Nguyễn',
+        firstName: 'An',
+        gender: 1,
+        generation: 1,
+        birthYear: 1920,
+        birthDate: '15/05/1920',
+        birthPlace: 'Thanh Oai, Hà Nội',
+        deathYear: 1995,
+        deathDate: '20/10/1995',
+        deathPlace: 'Hà Nội',
+        isLiving: false,
+        isPrivacyFiltered: false,
+        isPatrilineal: true,
+        families: ['F001'],
+        parentFamilies: [],
+        phone: '0901234567',
+        email: 'an.nv@gmail.com',
+        currentAddress: 'Số 12, Phố Huế, Hai Bà Trưng, Hà Nội',
+        hometown: 'Thanh Oai, Hà Nội',
+        occupation: 'Nhà giáo / Lãnh đạo dòng họ',
+        biography: 'Cụ Nguyễn Văn An là bậc tiền bối khai sáng chi họ Nguyễn Văn tại vùng chiêm trũng. Cụ từng tham gia kháng chiến và sau đó về làm công tác giáo dục tại địa phương. Cụ được biết đến là người đức độ, luôn chăm lo cho sự nghiệp học hành của con cháu và giữ gìn nền nếp gia phong.',
+        tags: ['Trưởng tộc', 'Lão thành cách mạng', 'Gương mẫu']
+    },
     // Đời 2
     { handle: 'P002', displayName: 'Nguyễn Văn Bình', gender: 1, generation: 2, birthYear: 1945, isLiving: true, isPrivacyFiltered: false, isPatrilineal: true, families: ['F002'], parentFamilies: ['F001'] },
     { handle: 'P003', displayName: 'Nguyễn Văn Cường', gender: 1, generation: 2, birthYear: 1948, isLiving: true, isPrivacyFiltered: false, isPatrilineal: true, families: ['F003'], parentFamilies: ['F001'] },

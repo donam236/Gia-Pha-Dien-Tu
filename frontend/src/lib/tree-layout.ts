@@ -22,6 +22,30 @@ export interface TreeNode {
     isPatrilineal: boolean;
     families: string[];
     parentFamilies: string[];
+    // Profile details
+    surname?: string;
+    firstName?: string;
+    birthDate?: string;
+    birthPlace?: string;
+    deathDate?: string;
+    deathPlace?: string;
+    chi?: number;
+    biography?: string;
+    tags?: string[];
+    mediaCount?: number;
+    phone?: string;
+    email?: string;
+    currentAddress?: string;
+    hometown?: string;
+    occupation?: string;
+    education?: string;
+    nickName?: string;
+    zalo?: string;
+    facebook?: string;
+    company?: string;
+    notes?: string;
+    gramps_id?: string;
+    _privacyNote?: string;
 }
 
 export interface TreeFamily {
@@ -272,10 +296,6 @@ function buildSubtree(
 
     const childrenTotalWidth = blockRight - blockLeft;
 
-    // Store child offsets for use in assignPositions
-    // We encode them in the anchorX positions relative to the children block
-    const childAnchors: number[] = childOffsets.map(o => o - blockLeft);
-
     // Recompute anchorX positions in the ChildItem for assignPositions compatibility
     // We need to update the total block structure
     const adjustedAnchorX = midpointOfAnchors - blockLeft;
@@ -304,8 +324,8 @@ function buildSubtree(
         anchorX: leftExtent,
         contour: combinedContour,
     };
-    (subtreeResult as any)._childOffsets = childOffsets;
-    (subtreeResult as any)._blockLeft = blockLeft;
+    (subtreeResult as unknown as Record<string, unknown>)._childOffsets = childOffsets;
+    (subtreeResult as unknown as Record<string, unknown>)._blockLeft = blockLeft;
 
     return subtreeResult;
 }
@@ -353,8 +373,8 @@ function assignPositions(
     }
 
     // RULE 2: N children → use contour-based offsets if available
-    const storedOffsets = (subtree as any)._childOffsets as number[] | undefined;
-    const storedBlockLeft = (subtree as any)._blockLeft as number | undefined;
+    const storedOffsets = (subtree as unknown as Record<string, unknown>)._childOffsets as number[] | undefined;
+    const storedBlockLeft = (subtree as unknown as Record<string, unknown>)._blockLeft as number | undefined;
 
     if (storedOffsets && storedBlockLeft !== undefined) {
         // Use contour-based child offsets for compact placement

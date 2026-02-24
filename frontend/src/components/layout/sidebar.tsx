@@ -17,11 +17,14 @@ import {
     Contact,
     Newspaper,
     CalendarDays,
+    HelpCircle,
+    Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
+import { motion } from 'framer-motion';
 
 const navItems = [
     { href: '/', label: 'Trang chủ', icon: Home },
@@ -49,88 +52,134 @@ export function Sidebar() {
     return (
         <aside
             className={cn(
-                'flex flex-col border-r bg-card transition-all duration-300 h-screen sticky top-0',
-                collapsed ? 'w-16' : 'w-64',
+                'relative flex flex-col z-[45] transition-all duration-500 ease-in-out h-screen sticky top-0 overflow-hidden',
+                'bg-white/80 dark:bg-surface-950/80 backdrop-blur-2xl border-r border-surface-200 dark:border-white/5',
+                collapsed ? 'w-20' : 'w-72',
             )}
         >
             {/* Logo */}
-            <div className="flex items-center gap-2 px-4 py-4 border-b">
-                <TreePine className="h-6 w-6 text-primary shrink-0" />
-                {!collapsed && <span className="font-bold text-lg">Gia phả họ Lê</span>}
+            <div className="flex items-center gap-3 px-6 h-20 shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30">
+                    <TreePine className="h-6 w-6 text-white" />
+                </div>
+                {!collapsed && (
+                    <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex flex-col"
+                    >
+                        <span className="font-black text-lg tracking-tight leading-none italic text-surface-900 dark:text-white">GIA PHẢ</span>
+                        <span className="text-[10px] font-bold text-primary-500 tracking-[0.2em] uppercase">LÊ HUY</span>
+                    </motion.div>
+                )}
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-                    return (
-                        <Link key={item.href} href={item.href}>
-                            <span
-                                className={cn(
-                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                                    isActive
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                                )}
-                            >
-                                <item.icon className="h-4 w-4 shrink-0" />
-                                {!collapsed && item.label}
-                            </span>
-                        </Link>
-                    );
-                })}
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto scrollbar-hide">
+                <div className="mb-4">
+                    {!collapsed && (
+                        <p className="px-4 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-surface-400">Menu chính</p>
+                    )}
+                    {navItems.map((item) => {
+                        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                        return (
+                            <Link key={item.href} href={item.href}>
+                                <div
+                                    className={cn(
+                                        'group relative flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300',
+                                        isActive
+                                            ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+                                            : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-white/5 hover:text-surface-900 dark:hover:text-white',
+                                    )}
+                                >
+                                    <item.icon className={cn('h-5 w-5 transition-transform group-hover:scale-110', isActive ? 'text-white' : 'text-surface-400 group-hover:text-primary-500')} />
+                                    {!collapsed && (
+                                        <motion.span
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                        >
+                                            {item.label}
+                                        </motion.span>
+                                    )}
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="activeNav"
+                                            className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
+                                        />
+                                    )}
+                                </div>
+                            </Link>
+                        );
+                    })}
+                </div>
 
-                {/* Admin section — only visible for admin users */}
                 {isAdmin && (
-                    <>
+                    <div className="pt-6 border-t border-surface-100 dark:border-white/5 space-y-2">
                         {!collapsed && (
-                            <div className="pt-4 pb-2">
-                                <span className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                                    Quản trị
-                                </span>
-                            </div>
+                            <p className="px-4 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-surface-400">Hệ thống</p>
                         )}
-                        {collapsed && <div className="border-t my-2" />}
                         {adminItems.map((item) => {
                             const isActive = pathname.startsWith(item.href);
                             return (
                                 <Link key={item.href} href={item.href}>
-                                    <span
+                                    <div
                                         className={cn(
-                                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                                            'group flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300',
                                             isActive
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                                                ? 'bg-surface-900 text-white dark:bg-white dark:text-surface-950'
+                                                : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-white/5 hover:text-surface-900 dark:hover:text-white',
                                         )}
                                     >
-                                        <item.icon className="h-4 w-4 shrink-0" />
-                                        {!collapsed && item.label}
-                                    </span>
+                                        <item.icon className="h-5 w-5 shrink-0" />
+                                        {!collapsed && (
+                                            <motion.span
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                            >
+                                                {item.label}
+                                            </motion.span>
+                                        )}
+                                    </div>
                                 </Link>
                             );
                         })}
-                    </>
+                    </div>
                 )}
             </nav>
 
-            {/* Contact info */}
+            {/* Support Box */}
             {!collapsed && (
-                <div className="border-t px-4 py-3">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                        Để thiết lập <span className="font-semibold text-foreground">gia phả điện tử</span> riêng cho dòng họ, truy cập được từ bất kì đâu, vui lòng liên hệ
-                        <br />
-                        <span className="font-semibold text-foreground">📞 088 999 1120</span>
-                        <br />
-                        <span className="text-[10px] opacity-70">để nhận báo giá.</span>
-                    </p>
+                <div className="px-6 py-6 border-t border-surface-100 dark:border-white/5">
+                    <div className="p-4 rounded-[2rem] bg-surface-100/50 dark:bg-white/5 border border-surface-200 dark:border-white/10 shadow-inner">
+                        <div className="flex items-center gap-2 mb-2 text-primary-500">
+                            <HelpCircle className="h-4 w-4" />
+                            <span className="text-[10px] font-black uppercase tracking-wider">Hỗ trợ</span>
+                        </div>
+                        <p className="text-[10px] text-surface-600 dark:text-surface-400 mb-3 leading-relaxed font-bold">
+                            Cần hỗ trợ thiết lập gia phả riêng cho dòng họ?
+                        </p>
+                        <a href="tel:0889991120" className="flex items-center gap-2 text-xs font-black text-surface-900 dark:text-white hover:text-primary-500 transition-colors">
+                            <Phone className="h-3 w-3" />
+                            088 999 1120
+                        </a>
+                    </div>
                 </div>
             )}
 
             {/* Collapse toggle */}
-            <div className="border-t p-2">
-                <Button variant="ghost" size="sm" className="w-full" onClick={() => setCollapsed(!collapsed)}>
-                    {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                    {!collapsed && <span className="ml-2">Thu gọn</span>}
+            <div className="p-4 h-20 shrink-0 flex items-center justify-center">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-full h-12 rounded-2xl hover:bg-surface-100 dark:hover:bg-white/5 border border-transparent hover:border-surface-200 dark:hover:border-white/10"
+                    onClick={() => setCollapsed(!collapsed)}
+                >
+                    {collapsed ? <ChevronRight className="h-5 w-5" /> : (
+                        <div className="flex items-center gap-2">
+                            <ChevronLeft className="h-5 w-5" />
+                            <span className="text-xs font-black uppercase tracking-widest">Thu gọn</span>
+                        </div>
+                    )}
                 </Button>
             </div>
         </aside>

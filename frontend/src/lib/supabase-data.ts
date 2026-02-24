@@ -4,6 +4,7 @@
  */
 import { supabase } from './supabase';
 import type { TreeNode, TreeFamily } from './tree-layout';
+import { MOCK_PEOPLE, MOCK_FAMILIES } from './mock-data';
 
 export type { TreeNode, TreeFamily };
 
@@ -22,7 +23,31 @@ function dbRowToTreeNode(row: Record<string, unknown>): TreeNode {
         isPatrilineal: row.is_patrilineal as boolean,
         families: (row.families as string[]) || [],
         parentFamilies: (row.parent_families as string[]) || [],
-    };
+        // Additional profile fields
+        surname: row.surname as string | undefined,
+        firstName: row.first_name as string | undefined,
+        birthDate: row.birth_date as string | undefined,
+        birthPlace: row.birth_place as string | undefined,
+        deathDate: row.death_date as string | undefined,
+        deathPlace: row.death_place as string | undefined,
+        chi: row.chi as number | undefined,
+        biography: row.biography as string | undefined,
+        tags: row.tags as string[] | undefined,
+        mediaCount: row.media_count as number | undefined,
+        phone: row.phone as string | undefined,
+        email: row.email as string | undefined,
+        currentAddress: row.current_address as string | undefined,
+        hometown: row.hometown as string | undefined,
+        occupation: row.occupation as string | undefined,
+        education: row.education as string | undefined,
+        nickName: row.nick_name as string | undefined,
+        zalo: row.zalo as string | undefined,
+        facebook: row.facebook as string | undefined,
+        company: row.company as string | undefined,
+        notes: row.notes as string | undefined,
+        gramps_id: row.gramps_id as string | undefined,
+        _privacyNote: row._privacy_note as string | undefined,
+    } as TreeNode;
 }
 
 function dbRowToTreeFamily(row: Record<string, unknown>): TreeFamily {
@@ -45,8 +70,13 @@ export async function fetchPeople(): Promise<TreeNode[]> {
         .order('handle');
 
     if (error) {
+        const isPlaceholder = (supabase as unknown as Record<string, unknown>).isPlaceholder === true;
+        if (isPlaceholder || error.code === 'UNCONFIGURED') {
+            console.warn('Supabase not configured. Using MOCK_PEOPLE fallback.');
+            return MOCK_PEOPLE;
+        }
         console.error('Failed to fetch people:', error.message);
-        return [];
+        return MOCK_PEOPLE; // Always fallback to mock in demo/lab environment
     }
     return (data || []).map(dbRowToTreeNode);
 }
@@ -59,8 +89,13 @@ export async function fetchFamilies(): Promise<TreeFamily[]> {
         .order('handle');
 
     if (error) {
+        const isPlaceholder = (supabase as unknown as Record<string, unknown>).isPlaceholder === true;
+        if (isPlaceholder || error.code === 'UNCONFIGURED') {
+            console.warn('Supabase not configured. Using MOCK_FAMILIES fallback.');
+            return MOCK_FAMILIES;
+        }
         console.error('Failed to fetch families:', error.message);
-        return [];
+        return MOCK_FAMILIES; // Always fallback to mock in demo/lab environment
     }
     return (data || []).map(dbRowToTreeFamily);
 }
@@ -69,6 +104,27 @@ export async function fetchFamilies(): Promise<TreeFamily[]> {
 export async function fetchTreeData(): Promise<{ people: TreeNode[]; families: TreeFamily[] }> {
     const [people, families] = await Promise.all([fetchPeople(), fetchFamilies()]);
     return { people, families };
+}
+
+/** Fetch a single person by handle */
+export async function fetchPersonByHandle(handle: string): Promise<TreeNode | null> {
+    const { data, error } = await supabase
+        .from('people')
+        .select('*')
+        .eq('handle', handle)
+        .single();
+
+    if (error) {
+        const isPlaceholder = (supabase as unknown as Record<string, unknown>).isPlaceholder === true;
+        if (isPlaceholder || error.code === 'UNCONFIGURED' || error.code === 'PGRST116') { // PGRST116 is "not found"
+            const mock = MOCK_PEOPLE.find(p => p.handle === handle);
+            if (mock) return mock;
+        }
+        console.error(`Failed to fetch person ${handle}:`, error.message);
+        return MOCK_PEOPLE.find(p => p.handle === handle) || null;
+    }
+
+    return dbRowToTreeNode(data);
 }
 
 // ── Write operations (editor mode) ──
