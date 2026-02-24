@@ -69,7 +69,7 @@ export function Sidebar() {
                         className="flex flex-col"
                     >
                         <span className="font-black text-lg tracking-tight leading-none italic text-surface-900 dark:text-white">GIA PHẢ</span>
-                        <span className="text-[10px] font-bold text-primary-500 tracking-[0.2em] uppercase">LÊ HUY</span>
+                        <span className="text-[10px] font-bold text-primary-500 tracking-[0.2em] uppercase">ĐỖ QUÝ</span>
                     </motion.div>
                 )}
             </div>

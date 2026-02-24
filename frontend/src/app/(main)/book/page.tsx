@@ -7,6 +7,8 @@ import { fetchTreeData } from '@/lib/supabase-data';
 import { generateBookData, type BookData, type BookPerson, type BookChapter } from '@/lib/book-generator';
 import type { TreeNode, TreeFamily } from '@/lib/tree-layout';
 import Link from 'next/link';
+import HTMLFlipBook from 'react-pageflip';
+import * as React from 'react';
 
 // ═══ Color Themes ═══
 interface Theme {
@@ -286,83 +288,127 @@ export default function BookPage() {
 
                 {/* Preview quick-nav strip */}
                 {previewMode && (
-                    <div className="border-t bg-slate-50 px-4 py-2 overflow-hidden">
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin" style={{ maxWidth: '100%' }}>
+                    <div className="border-t bg-slate-900 px-4 py-2 overflow-hidden flex items-center justify-between">
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin flex-1" style={{ maxWidth: '100%' }}>
                             {sections.map(s => (
-                                <a key={s.id} href={`#preview-${s.id}`}
-                                    className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-medium
-                                        bg-white border hover:shadow-sm transition-all whitespace-nowrap"
-                                    style={{ borderColor: t.borderLight, color: t.primary }}>
+                                <button key={s.id} onClick={() => {
+                                    // Custom logic to flip to specific page if needed, for now just a styled pill
+                                }}
+                                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide
+                                        bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all whitespace-nowrap shadow-sm border border-white/5"
+                                >
                                     {s.label}
-                                    <span className="ml-0.5 text-[9px] opacity-50">·{s.pageNum}</span>
-                                </a>
+                                    <span className="ml-[3px] text-[9px] opacity-40 font-mono">p.{s.pageNum}</span>
+                                </button>
                             ))}
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* ═══ PRINT PREVIEW GALLERY ═══ */}
+            {/* ═══ PRINT PREVIEW GALLERY (3D FLIPBOOK) ═══ */}
             {previewMode && (
-                <div className="no-print bg-slate-100 min-h-screen p-6">
-                    <div ref={pagesRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                        {sections.map(s => (
-                            <div key={s.id} id={`preview-${s.id}`} className="relative">
-                                <div className="preview-card-inner bg-white rounded-lg shadow-md border overflow-hidden hover:shadow-xl transition-shadow">
-                                    <div className="absolute top-2 right-2 z-10 bg-white/90 border rounded-full px-2 py-0.5 text-[10px] font-mono"
-                                        style={{ color: t.primary }}>
-                                        Trang {s.pageNum}
-                                    </div>
-                                    <div className="aspect-[210/297] overflow-hidden">
+                <div className="no-print bg-slate-950 min-h-[calc(100vh-130px)] p-6 flex items-center justify-center overflow-hidden">
+                    {/* Background glow for premium feel */}
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-500/10 blur-[120px] rounded-full pointer-events-none" />
+
+                    <div className="w-full max-w-5xl mx-auto flex items-center justify-center relative translate-y-[-20px]">
+                        {/* @ts-expect-error - react-pageflip prop types are outdated */}
+                        <HTMLFlipBook
+                            width={450}
+                            height={600}
+                            size="fixed"
+                            minWidth={315}
+                            maxWidth={450}
+                            minHeight={420}
+                            maxHeight={600}
+                            drawShadow={true}
+                            flippingTime={1000}
+                            usePortrait={false}
+                            startZIndex={0}
+                            autoSize={true}
+                            maxShadowOpacity={0.6}
+                            showCover={true}
+                            mobileScrollSupport={true}
+                            className="shadow-2xl book-flip"
+                        >
+                            {/* The Hardcover Binding Edge effect */}
+                            {sections.map((s, index) => (
+                                <div key={s.id} className="relative bg-white overflow-hidden shadow-inner"
+                                    style={{
+                                        boxShadow: index === 0 ? 'inset -12px 0 20px -10px rgba(0,0,0,0.1)' :
+                                            index === sections.length - 1 ? 'inset 12px 0 20px -10px rgba(0,0,0,0.1)' :
+                                                (index % 2 === 0) ? 'inset 25px 0 25px -15px rgba(0,0,0,0.1)' :
+                                                    'inset -25px 0 25px -15px rgba(0,0,0,0.1)'
+                                    }}>
+
+                                    {/* Page Number on corners for inner pages */}
+                                    {index > 0 && index < sections.length - 1 && (
+                                        <div className={`absolute bottom-6 ${index % 2 === 0 ? 'left-8' : 'right-8'} text-[10px] text-slate-400 font-serif z-10 opacity-60`}>
+                                            {s.pageNum}
+                                        </div>
+                                    )}
+
+                                    {/* Content scale container */}
+                                    <div className="w-full h-full flex items-start justify-center overflow-hidden">
                                         <div
-                                            className="w-[210mm] h-[297mm] origin-top-left"
-                                            style={{ transform: `scale(0.35)` }}
+                                            className="w-[210mm] h-[297mm] origin-top"
+                                            style={{ transform: `scale(0.53)` }} /* Approximately 450/840 */
                                         >
                                             <BookSection sectionId={s.id} bookData={bookData} theme={t}
                                                 memberStart={s.memberStart} memberEnd={s.memberEnd} isFirstPage={s.isFirstPage}
                                                 appendixStart={s.appendixStart} appendixEnd={s.appendixEnd} appendixIsFirst={s.appendixIsFirst} />
                                         </div>
                                     </div>
-                                    <div className="px-3 py-2 border-t text-xs font-medium" style={{ color: t.primary }}>
-                                        {s.label}
-                                    </div>
+
+                                    {/* Realistic Page Lighting */}
+                                    <div className="absolute inset-0 pointer-events-none"
+                                        style={{
+                                            background: (index % 2 === 0)
+                                                ? 'linear-gradient(to right, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 100%)'
+                                                : 'linear-gradient(to left, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 100%)'
+                                        }}
+                                    />
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </HTMLFlipBook>
                     </div>
-                </div>
-            )}
+                </div >
+            )
+            }
 
             {/* ═══ NORMAL READING MODE ═══ */}
-            {!previewMode && (
-                <div className="book-content max-w-[210mm] mx-auto bg-white"
-                    style={{ fontFamily: "'Noto Serif', Georgia, serif", color: t.text }}>
+            {
+                !previewMode && (
+                    <div className="book-content max-w-[210mm] mx-auto bg-white"
+                        style={{ fontFamily: "'Noto Serif', Georgia, serif", color: t.text }}>
 
-                    <CoverPage bookData={bookData} theme={t} />
+                        <CoverPage bookData={bookData} theme={t} />
 
-                    <section id="toc" className="page-break px-8 py-12">
-                        <span className="page-label">Trang 2</span>
-                        <TocContent bookData={bookData} theme={t} />
-                    </section>
-
-                    {bookData.chapters.map((ch, ci) => (
-                        <section key={ch.generation} id={`gen-${ch.generation}`} className="page-break px-8 py-12">
-                            <span className="page-label">Trang {ci + 3}</span>
-                            <ChapterContent chapter={ch} theme={t} />
+                        <section id="toc" className="page-break px-8 py-12">
+                            <span className="page-label">Trang 2</span>
+                            <TocContent bookData={bookData} theme={t} />
                         </section>
-                    ))}
 
-                    <section id="appendix" className="page-break px-8 py-12">
-                        <span className="page-label">Trang {bookData.chapters.length + 3}</span>
-                        <AppendixContent bookData={bookData} theme={t} />
-                    </section>
+                        {bookData.chapters.map((ch, ci) => (
+                            <section key={ch.generation} id={`gen-${ch.generation}`} className="page-break px-8 py-12">
+                                <span className="page-label">Trang {ci + 3}</span>
+                                <ChapterContent chapter={ch} theme={t} />
+                            </section>
+                        ))}
 
-                    <section id="closing" className="page-break px-8 py-16 text-center" style={{ fontFamily: "'Noto Serif', Georgia, serif" }}>
-                        <span className="page-label">Trang {bookData.chapters.length + 4}</span>
-                        <ClosingContent bookData={bookData} theme={t} />
-                    </section>
-                </div>
-            )}
+                        <section id="appendix" className="page-break px-8 py-12">
+                            <span className="page-label">Trang {bookData.chapters.length + 3}</span>
+                            <AppendixContent bookData={bookData} theme={t} />
+                        </section>
+
+                        <section id="closing" className="page-break px-8 py-16 text-center" style={{ fontFamily: "'Noto Serif', Georgia, serif" }}>
+                            <span className="page-label">Trang {bookData.chapters.length + 4}</span>
+                            <ClosingContent bookData={bookData} theme={t} />
+                        </section>
+                    </div>
+                )
+            }
 
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -397,7 +443,7 @@ export default function BookPage() {
                     }
                 }
             ` }} />
-        </div>
+        </div >
     );
 }
 
@@ -602,7 +648,6 @@ function AppendixContent({ bookData, theme: t, startIdx, endIdx, showHeader }: {
     // Determine section boundaries
     const patriEnd = patrilineal.length;
     const showPatriHeader = start < patriEnd;
-    const showNgoaiHeader = end > patriEnd && start < allEntries.length;
 
     return (
         <>

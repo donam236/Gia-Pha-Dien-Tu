@@ -1,6 +1,6 @@
 # 🗺️ Lộ trình Phát triển Chi tiết Dự án Gia Phả Điện Tử
 
-Dòng họ **Lê Huy** - Kết nối cội nguồn qua trải nghiệm kỹ thuật số cao cấp.
+Dòng họ **Đỗ Quý** - Kết nối cội nguồn qua trải nghiệm kỹ thuật số cao cấp.
 
 ---
 
@@ -106,11 +106,11 @@ graph TD
 
 **Tasks:**
 
-- [ ] **[UI/UX]** Tích hợp `glass-card` cho các Node thành viên.
-- [ ] **[UI/UX]** Hiệu ứng `border-glow` theo giới tính (Xanh cho Nam, Hồng cho Nữ).
-- [ ] **[Motion]** Ambient Background (Glowing mesh) cho Workspace của Cây.
-- [ ] **[Feature]** Cải tiến Mini-map bằng Glassmorphism và tối ưu độ phân giải.
-- [ ] **[UI]** Thống nhất Search Bar & Filters theo Style Kit mới (Floating Glass).
+- [x] **[UI/UX]** Tích hợp `glass-card` cho các Node thành viên.
+- [x] **[UI/UX]** Hiệu ứng `border-glow` theo giới tính (Xanh cho Nam, Hồng cho Nữ).
+- [x] **[Motion]** Ambient Background (Glowing mesh) cho Workspace của Cây.
+- [x] **[Feature]** Cải tiến Mini-map bằng Glassmorphism và tối ưu độ phân giải.
+- [x] **[UI]** Thống nhất Search Bar & Filters theo Style Kit mới (Floating Glass).
 
 ---
 
@@ -125,10 +125,10 @@ graph TD
 
 **Tasks:**
 
-- [ ] **[UI]** Hero Section với hiệu ứng Typography 3D và nền mờ ảo (Glass Elements).
-- [ ] **[Content]** Hiển thị số liệu thống kê dòng họ (Tổng số đời, Tổng thành viên) dạng Counter đẹp mắt.
-- [ ] **[Theming]** Đồng bộ Color Palette (Vibrant Green/Gold) trên toàn bộ hệ thống.
-- [ ] **[Feature]** Nâng cấp Electronic Book: Giao diện lật trang (Flipbook) và Theme màu Premium.
+- [x] **[UI]** Hero Section với hiệu ứng Typography 3D và nền mờ ảo (Glass Elements).
+- [x] **[Content]** Hiển thị số liệu thống kê dòng họ (Tổng số đời, Tổng thành viên) dạng Counter đẹp mắt.
+- [x] **[Theming]** Đồng bộ Color Palette (Vibrant Green/Gold) trên toàn bộ hệ thống.
+- [x] **[Feature]** Nâng cấp Electronic Book: Giao diện lật trang (Flipbook) và Theme màu Premium.
 
 ---
 
@@ -181,4 +181,4 @@ graph TD
 ---
 > **Người lập kế hoạch**: Antigravity AI Architect  
 > **Phiên bản**: 2.0 (PRD Aligned)  
-> **Ngày cập nhật**: 23/02/2026
+> **Ngày cập nhật**: 24/02/2026

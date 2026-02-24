@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
   - **Advanced Selection Aura**: High-intensity luminous ring for selected/focused members.
   - **Context Menu & Editor Upgrade**: Translucent glass-themed interfaces for tree interaction.
 - **Dark Mode Optimization**: Comprehensive color token audit to ensure perfect visibility and premium aesthetics in dark theme.
+- **Premium Landing Page**: Implemented an immersive homepage with 3D typography, ambient orbs, and animated live-stats.
+- **3D Electronic Book (Flipbook)**: Integrated `react-pageflip` with high-fidelity 3D page animations, premium paper textures, and realistic spine shadows.
 
 ### Changed
 
@@ -24,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - **Code Quality**:
   - Eliminated complex cascading render warnings in `tree-client.tsx` using conditional state sync.
   - Strict typing for search and layout computed properties.
+- **Family Branding Migration**: Globally updated the genealogy brand and metadata from "Lê Huy" to "Đỗ Quý" across all UI components and SEO configs.
 
 ## [2026-02-23]
 

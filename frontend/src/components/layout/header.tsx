@@ -38,7 +38,7 @@ export function Header() {
                     {/* Mobile Menu indicator or toggle would go here */}
                 </div>
                 <h2 className="text-sm font-bold tracking-wider uppercase text-surface-400 dark:text-surface-500">
-                    Dòng họ Lê Huy
+                    Dòng họ Đỗ Quý
                 </h2>
             </div>
 

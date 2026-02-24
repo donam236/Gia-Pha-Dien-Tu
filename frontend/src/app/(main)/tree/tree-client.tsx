@@ -1338,7 +1338,7 @@ function PersonCard({ item, isHighlighted, isFocused, isHovered, isSelected, zoo
                             className="absolute -bottom-1 -right-1 w-5 h-5 rounded-md bg-gradient-to-br from-primary-400 to-primary-600
                                 text-white text-[8px] flex items-center justify-center shadow-lg font-black border-2 border-white dark:border-slate-900"
                         >
-                            LÊ
+                            ĐỖ
                         </motion.div>
                     )}
                 </div>
